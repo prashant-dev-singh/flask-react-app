@@ -1,0 +1,181 @@
+from flask import Flask, request, jsonify, render_template, redirect
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+
+# ✅ Database configuration (AWS RDS SQL Server)
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    "mssql+pymssql://admin:adminadmin@flask-db.cfigo2cci76s.us-east-2.rds.amazonaws.com:1433/flaskdb"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize DB
+db = SQLAlchemy(app)
+
+
+# ✅ Model (Table)
+class Item(db.Model):
+    __tablename__ = "item"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    price = db.Column(db.Integer)
+
+
+# ✅ Create table if not exists
+with app.app_context():
+    db.create_all()
+
+
+# ✅ UI Home (renders HTML)
+@app.route("/")
+def home():
+    items = Item.query.all()
+    return render_template("index.html", items=items)
+
+
+# ✅ CREATE (Add item from form or API)
+@app.route("/items", methods=["POST"])
+def create_item():
+    if request.form:
+        name = request.form.get("name")
+        price = request.form.get("price")
+    else:
+        data = request.get_json()
+        name = data.get("name")
+        price = data.get("price")
+
+    item = Item(name=name, price=price)
+    db.session.add(item)
+    db.session.commit()
+
+    return redirect("/")
+
+
+# ✅ READ (API - optional)
+@app.route("/items", methods=["GET"])
+def get_items():
+    items = Item.query.all()
+    return jsonify([
+        {"id": i.id, "name": i.name, "price": i.price}
+        for i in items
+    ])
+
+
+# ✅ UPDATE (from UI form)
+@app.route("/update/<int:item_id>", methods=["POST"])
+def update_item(item_id):
+    item = Item.query.get(item_id)
+
+    if item:
+        item.name = request.form.get("name", item.name)
+        item.price = request.form.get("price", item.price)
+        db.session.commit()
+
+    return redirect("/")
+
+
+# ✅ DELETE (from UI form)
+@app.route("/delete/<int:item_id>", methods=["POST"])
+def delete_item(item_id):
+    item = Item.query.get(item_id)
+
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+
+    return redirect("/")
+
+
+# ✅ Run app
+if __name__ == "__main__":
+    app.run(debug=True)
+
+#  # ✅ 👉 CREATING DB TABLE 
+#  class Item(db.Model):
+#      id = db.Column(db.Integer, primary_key=True)
+#      name = db.Column(db.String(100))
+#      price = db.Column(db.Integer)
+
+#  with app.app_context():
+#      db.create_all()
+
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
+
+
+
+
+
+# items=[
+#     {'id':1,'name':'mango', 'price':100},
+#     {'id':2,'name':'apple', 'price':150},
+#     {'id':3,'name':'banana', 'price':50}    
+# ]
+
+
+
+
+# @app.route("/")
+# def home():
+#     return "Hello World"
+
+# from sqlalchemy import text
+
+# @app.get("/test-db")
+# def test_db():
+#     try:
+#         db.session.execute(text("SELECT 1"))
+#         return {"message": "Database connected successfully ✅"}
+#     except Exception as e:
+#         return {"error": str(e)}, 500
+
+# @app.get('/items')
+# def get_items():
+#     return {'items':items}
+
+
+# # ✅ GET single item
+# @app.get('/items/<int:item_id>')
+# def get_item(item_id):   
+#    for item in items:
+#         if item['id'] == item_id:
+#             return {'message': 'Item found successfully', 'item': item}
+           
+#    return {'message': 'Item not found'}, 404
+
+# # Add item 
+# @app.post('/items')
+# def add_item(): 
+#     request_data=request.get_json();
+#     print(request_data)
+#     items.append(request_data)
+#     return {'message': 'Item added successfully'},201
+
+
+
+# # ✅ PUT - Update item
+# @app.put('/items/<int:item_id>')
+# def update_item(item_id):
+#     request_data = request.get_json()
+
+#     for item in items:
+#         if item['id'] == item_id:
+#             item['name'] = request_data.get('name', item['name'])
+#             item['price'] = request_data.get('price', item['price'])
+#             return {'message': 'Item updated successfully', 'item': item}
+
+#     return {'message': 'Item not found'}, 404
+
+# # ✅ DELETE - Remove item
+# @app.delete('/items/<int:item_id>')
+# def delete_item(item_id):
+#     for item in items:
+#         if item['id'] == item_id:
+#             items.remove(item)
+#             return {'message': 'Item deleted successfully'}
+
+#     return {'message': 'Item not found'}, 404
+
